@@ -1,7 +1,7 @@
 use rand::Rng;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
+use sdl2::pixels::{Color, PixelFormatEnum};
 use std::ops::Range;
 
 #[derive(Debug)]
@@ -25,43 +25,45 @@ fn create_random_start(w: u32, h: u32) -> Pos {
       }),
     ),
     flame: Color::RGB(
-      rng.gen_range(Range { start: 0, end: 255 }),
-      rng.gen_range(Range { start: 0, end: 255 }),
-      rng.gen_range(Range { start: 0, end: 255 }),
+      rng.gen_range(Range { start: 0, end: 25 }),
+      rng.gen_range(Range { start: 0, end: 25 }),
+      rng.gen_range(Range { start: 0, end: 25 }),
     ),
   }
 }
 
 pub fn main() -> Result<(), String> {
-  const w: u32 = 800;
-  const h: u32 = 600;
+  const WIDTH: u32 = 800;
+  const HEIGHT: u32 = 600;
   let sdl_context = sdl2::init()?;
   let video_subsystem = sdl_context.video()?;
   let mut rng = rand::thread_rng();
 
   let window = video_subsystem
-    .window("rust-sdl2 demo: Window", w, h)
+    .window("rust-sdl2 demo: Window", WIDTH, HEIGHT)
     .build()
     .map_err(|e| e.to_string())?;
 
-  let mut canvas = window
-    .into_canvas()
-    .present_vsync()
-    .build()
-    .map_err(|e| e.to_string())?;
-
-  let mut tick = 0;
-
+  let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+  let tc = canvas.texture_creator();
+  let mut texture = tc
+    .create_texture(
+      PixelFormatEnum::RGB888,
+      sdl2::render::TextureAccess::Streaming,
+      WIDTH,
+      HEIGHT,
+    )
+    .unwrap();
   let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string())?;
   let mut flames: std::vec::Vec<Pos> = std::vec::Vec::new();
-  flames.push(create_random_start(w, h));
-  flames.push(create_random_start(w, h));
-  flames.push(create_random_start(w, h));
-  flames.push(create_random_start(w, h));
-  flames.push(create_random_start(w, h));
-  flames.push(create_random_start(w, h));
-  flames.push(create_random_start(w, h));
-  flames.push(create_random_start(w, h));
+  flames.push(create_random_start(WIDTH, HEIGHT));
+  flames.push(create_random_start(WIDTH, HEIGHT));
+  flames.push(create_random_start(WIDTH, HEIGHT));
+  flames.push(create_random_start(WIDTH, HEIGHT));
+  flames.push(create_random_start(WIDTH, HEIGHT));
+  flames.push(create_random_start(WIDTH, HEIGHT));
+  flames.push(create_random_start(WIDTH, HEIGHT));
+  flames.push(create_random_start(WIDTH, HEIGHT));
 
   'running: loop {
     for event in event_pump.poll_iter() {
@@ -74,29 +76,31 @@ pub fn main() -> Result<(), String> {
         _ => {}
       }
     }
-
-    {
-      tick += 1;
-    }
-
+    canvas.clear();
     for f in &mut flames {
       f.point.x -= rng.gen_range(Range { start: -1, end: 2 });
       f.point.y -= rng.gen_range(Range { start: -1, end: 2 });
       if f.point.x < 0 {
-        f.point.x = w as i32;
+        f.point.x = WIDTH as i32;
       }
-      if f.point.x >= w as i32 {
+      if f.point.x >= WIDTH as i32 {
         f.point.x = 0;
       }
       if f.point.y < 0 {
-        f.point.y = h as i32;
+        f.point.y = HEIGHT as i32;
       }
-      if f.point.y >= h as i32 {
+      if f.point.y >= HEIGHT as i32 {
         f.point.y = 0;
       }
-      canvas.set_draw_color(f.flame);
-      canvas.draw_point(f.point);
+      texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {
+        let pos = pitch * (f.point.y() as usize) + f.point.x() as usize * 4;
+        buffer[pos] = 0;
+        buffer[pos + (1 as usize)] = f.flame.r;
+        buffer[pos + (2 as usize)] = f.flame.g;
+        buffer[pos + (3 as usize)] = f.flame.b;
+      })?
     }
+    canvas.copy(&texture, None, None);
     canvas.present();
   }
 
