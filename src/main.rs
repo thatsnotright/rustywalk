@@ -25,9 +25,9 @@ fn create_random_start(w: u32, h: u32) -> Pos {
       }),
     ),
     flame: Color::RGB(
-      rng.gen_range(Range { start: 0, end: 25 }),
-      rng.gen_range(Range { start: 0, end: 25 }),
-      rng.gen_range(Range { start: 0, end: 25 }),
+      rng.gen_range(Range { start: 0, end: 24 }),
+      rng.gen_range(Range { start: 0, end: 24 }),
+      rng.gen_range(Range { start: 0, end: 24 }),
     ),
   }
 }
@@ -94,10 +94,28 @@ pub fn main() -> Result<(), String> {
       }
       texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {
         let pos = pitch * (f.point.y() as usize) + f.point.x() as usize * 4;
-        buffer[pos] = 0;
-        buffer[pos + (1 as usize)] = f.flame.r;
-        buffer[pos + (2 as usize)] = f.flame.g;
-        buffer[pos + (3 as usize)] = f.flame.b;
+        let halt = rng.gen_range(Range {
+          start: 0,
+          end: 1000,
+        });
+        let rinc = rng.gen_range(Range { start: 0, end: 2 });
+        if halt > 990 {
+          buffer[pos] = 255;
+          buffer[pos + (1 as usize)] = 255;
+          buffer[pos + (2 as usize)] = 255;
+          buffer[pos + (3 as usize)] = 255;
+          let new_flame = &create_random_start(WIDTH, HEIGHT);
+          f.flame = new_flame.flame;
+          f.point = new_flame.point;
+        } else {
+          buffer[pos] = 0;
+          buffer[pos + (1 as usize)] = f.flame.r;
+          buffer[pos + (2 as usize)] = f.flame.g;
+          buffer[pos + (3 as usize)] = f.flame.b;
+          f.flame.r = (f.flame.r + rinc) % 255;
+          f.flame.b = (f.flame.b + rinc) % 255;
+          f.flame.g = (f.flame.g + rinc) % 255;
+        }
       })?
     }
     canvas.copy(&texture, None, None);
