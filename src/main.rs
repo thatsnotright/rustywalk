@@ -112,9 +112,6 @@ pub fn main() -> Result<(), String> {
           buffer[pos + (1 as usize)] = f.flame.r;
           buffer[pos + (2 as usize)] = f.flame.g;
           buffer[pos + (3 as usize)] = f.flame.b;
-          f.flame.r = (f.flame.r + rinc) % 255;
-          f.flame.b = (f.flame.b + rinc) % 255;
-          f.flame.g = (f.flame.g + rinc) % 255;
         }
       })?
     }
