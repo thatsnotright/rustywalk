@@ -22,7 +22,7 @@ pub fn create_cell(w: u32, h: u32, is_frozen: bool) -> Cell {
       start: 0,
       end: h as usize,
     }),
-    is_frozen: is_frozen,
+    is_frozen,
     color: Color::RGB(
       rng.gen_range(Range { start: 0, end: 234 }),
       rng.gen_range(Range { start: 0, end: 234 }),

@@ -13,14 +13,14 @@ fn set_pixel(buffer: &mut [u8], pos: usize, r: u8, g: u8, b: u8) {
   buffer[pos + 3] = r;
 }
 pub fn main() -> Result<(), String> {
-  const WIDTH: u32 = 800;
-  const HEIGHT: u32 = 600;
+  const WIDTH: u32 = 320;
+  const HEIGHT: u32 = 240;
   let sdl_context = sdl2::init()?;
   let video_subsystem = sdl_context.video()?;
   let mut rng = rand::thread_rng();
 
   let window = video_subsystem
-    .window("rust-sdl2 demo: Window", WIDTH, HEIGHT)
+    .window("rust-sdl2 demo: Window", WIDTH * 8, HEIGHT * 8)
     .build()
     .map_err(|e| e.to_string())?;
 
@@ -45,32 +45,46 @@ pub fn main() -> Result<(), String> {
           keycode: Some(Keycode::Escape),
           ..
         } => break 'running,
+        Event::KeyDown {
+          keycode: Some(Keycode::Space),
+          ..
+        } => grid.cycle(),
         _ => {}
       }
     }
     canvas.clear();
     texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {
+      buffer.fill(0);
       for y in 0..HEIGHT {
         for x in 0..WIDTH {
           let cell = &grid.cells[(x as usize, y as usize)];
+          let pos = pitch * y as usize + (x * 4) as usize;
+
           match cell {
             Some(cell) => {
-              if cell.is_frozen {
-                let pos = pitch * cell.y as usize + (cell.x * 4) as usize;
-                set_pixel(buffer, pos, cell.color.r, cell.color.g, cell.color.b);
-              } else {
-                let pos = pitch * cell.y as usize + (cell.x * 4) as usize;
-                set_pixel(buffer, pos, cell.color.r, cell.color.g, cell.color.b);
-              }
+              // if (cell.is_frozen) {
+              //   println!("cell {:?} is frozen", cell);
+              // }
+              set_pixel(buffer, pos, cell.color.r, cell.color.g, cell.color.b);
             }
-            None => (),
+            None => {}
           };
         }
       }
+      for (x, y) in &grid.active_cells {
+        let cell = &grid.cells[(*x, *y)];
+        let pos = pitch * *y + (*x * 4) as usize;
+        match cell {
+          Some(cell) => {
+            set_pixel(buffer, pos, cell.color.r, cell.color.g, cell.color.b);
+          }
+          None => {}
+        }
+      }
     })?;
-    grid.cycle();
     canvas.copy(&texture, None, None)?;
     canvas.present();
+    grid.cycle();
   }
 
   Ok(())

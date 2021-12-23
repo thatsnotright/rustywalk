@@ -7,16 +7,16 @@ use std::ops::Range;
 pub struct Grid {
   width: u32,
   height: u32,
+  desired_active: u16,
   pub cells: Array2D<Option<Cell>>,
-  active_cells: Vec<(usize, usize)>,
+  pub active_cells: Vec<(usize, usize)>,
 }
 
-const DIRECTION: [(i8, i8); 9] = [
+const DIRECTION: [(i8, i8); 8] = [
   (-1, -1),
   (0, -1),
   (1, -1),
   (-1, 0),
-  (0, 0),
   (1, 0),
   (-1, 1),
   (0, 1),
@@ -33,6 +33,7 @@ impl Grid {
     let mut new_grid = Grid {
       width,
       height,
+      desired_active: count,
       cells: Array2D::filled_with(None, width as usize, height as usize),
       active_cells: Vec::new(),
     };
@@ -59,12 +60,11 @@ impl Grid {
     for dir in DIRECTION {
       let (x, y) = dir;
       let pos = clip(
-        ((cell.1 as i32 + y as i32), (cell.0 as i32 + x as i32)),
+        ((cell.0 as i32 + x as i32), (cell.1 as i32 + y as i32)),
         self.width,
         self.height,
       );
-      println!("pos {:?}", pos);
-      match &self.cells[pos] {
+      match self.cells[pos].as_ref() {
         Some(r) => {
           result = Some(r);
         }
@@ -76,10 +76,12 @@ impl Grid {
 
   pub fn cycle(&mut self) {
     let mut rng = rand::thread_rng();
-
+    let mut next_active = Vec::new();
+    let mut add_count = 0;
     for (x, y) in &self.active_cells {
       let mut frozen = None;
       if let Some(f) = self.is_frozen((*x, *y)) {
+        println!("frozen at {:?}", (*x, *y));
         frozen = Some(f.color);
       }
       if let Some(active) = &mut self.cells[(*x, *y)] {
@@ -87,15 +89,31 @@ impl Grid {
           Some(f) => {
             active.is_frozen = true;
             active.color = f.clone();
+            add_count += 1;
           }
           None => {
-            let dir = rng.gen_range(Range { start: 0, end: 9 });
-            let dir = DIRECTION[dir];
-            active.x = max(0, min(self.width as i32, (active.x as i32 + dir.0 as i32))) as usize;
-            active.y = max(0, min(self.height as i32, (active.y as i32 + dir.1 as i32))) as usize;
+            let dir_idx = rng.gen_range(Range { start: 0, end: 8 });
+            let dir = DIRECTION[dir_idx];
+            let new_pos = clip(
+              (
+                (active.x as i32 + dir.0 as i32),
+                (active.y as i32 + dir.1 as i32),
+              ),
+              self.width,
+              self.height,
+            );
+            active.x = new_pos.0;
+            active.y = new_pos.1;
+            next_active.push((active.x, active.y));
+            self.cells[(new_pos.0, new_pos.1)] = Some(active.clone());
+            self.cells[(*x, *y)] = None;
           }
         }
       }
+    }
+    self.active_cells = next_active;
+    for _i in 0..(self.desired_active - (self.active_cells.len() as u16)) {
+      self.add_cell(false);
     }
   }
 }
