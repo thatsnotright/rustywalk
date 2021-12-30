@@ -1,3 +1,4 @@
+use crate::universe::actor::Actor;
 use rand::Rng;
 use sdl2::pixels::Color;
 use std::ops::Range;
@@ -10,23 +11,19 @@ pub struct Cell {
   pub is_frozen: bool,
 }
 
-pub fn create_cell(w: u32, h: u32, is_frozen: bool) -> Cell {
-  let mut rng = rand::thread_rng();
+impl Actor for Cell {
+  fn new(is_frozen: bool, w: usize, h: usize) -> Cell {
+    let mut rng = rand::thread_rng();
 
-  Cell {
-    x: rng.gen_range(Range {
-      start: 0,
-      end: w as usize,
-    }),
-    y: rng.gen_range(Range {
-      start: 0,
-      end: h as usize,
-    }),
-    is_frozen,
-    color: Color::RGB(
-      rng.gen_range(Range { start: 0, end: 234 }),
-      rng.gen_range(Range { start: 0, end: 234 }),
-      rng.gen_range(Range { start: 0, end: 234 }),
-    ),
+    return Cell {
+      x: rng.gen_range(Range { start: 0, end: w }),
+      y: rng.gen_range(Range { start: 0, end: h }),
+      is_frozen,
+      color: Color::RGB(
+        rng.gen_range(Range { start: 0, end: 234 }),
+        rng.gen_range(Range { start: 0, end: 234 }),
+        rng.gen_range(Range { start: 0, end: 234 }),
+      ),
+    };
   }
 }
