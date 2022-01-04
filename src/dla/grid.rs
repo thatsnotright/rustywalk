@@ -2,8 +2,6 @@ use crate::universe::actor::Actor;
 use crate::Cell;
 use array2d::Array2D;
 use rand::Rng;
-use std::cmp::{max, min};
-use std::collections::HashMap;
 use std::ops::Range;
 
 pub struct Grid<T: Actor + Clone> {
