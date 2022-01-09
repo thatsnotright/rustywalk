@@ -1,21 +1,19 @@
 #![feature(hash_drain_filter)]
+use crate::rtmp::rtmp::ServerHandshake;
 use clap::Parser;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
+use tokio::sync::broadcast;
 
 mod dla;
 mod rtmp;
 mod universe;
 use dla::cell::Cell;
 use dla::grid::Grid;
-
-fn set_pixel(buffer: &mut [u8], pos: usize, r: u8, g: u8, b: u8) {
-  buffer[pos] = 0;
-  buffer[pos + 1] = b;
-  buffer[pos + 2] = g;
-  buffer[pos + 3] = r;
-}
+use rtmp::rtmp::{Chunk, Context, RTMPClient, Start};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
@@ -37,7 +35,6 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<(), String> {
   let args = Args::parse();
-
   let sdl_context = sdl2::init()?;
   let video_subsystem = sdl_context.video()?;
 
@@ -45,6 +42,32 @@ async fn main() -> Result<(), String> {
     .window("rust-sdl2 demo: Window", args.width * 4, args.height * 4)
     .build()
     .map_err(|e| e.to_string())?;
+
+  let mut stream = TcpStream::connect(format!("{:}:{:}", args.ip, args.port))
+    .await
+    .expect("destination should be a reachable, running rtmp server");
+  let (tx, mut rx) = broadcast::channel::<Chunk>(16);
+  let context = Context {
+    sender: tx,
+    server: ServerHandshake {
+      version: 3,
+      time: 0,
+    },
+  };
+  let mut machine = RTMPClient::new(context);
+
+  let manager = tokio::spawn(async move {
+    while let Ok(message) = rx.recv().await {
+      println!("GOT = {:?}", message);
+      // TODO There has to be a way to selectively serialize based on this property using serde
+      if message.payload_only {
+        stream.write_all(&message.payload).await;
+      } else {
+        // encode
+        stream.write_all(&message.payload).await;
+      }
+    }
+  });
 
   let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
   let tc = canvas.texture_creator();
@@ -101,4 +124,11 @@ async fn main() -> Result<(), String> {
   }
 
   Ok(())
+}
+
+fn set_pixel(buffer: &mut [u8], pos: usize, r: u8, g: u8, b: u8) {
+  buffer[pos] = 0;
+  buffer[pos + 1] = b;
+  buffer[pos + 2] = g;
+  buffer[pos + 3] = r;
 }
